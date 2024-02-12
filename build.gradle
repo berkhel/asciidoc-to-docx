@@ -10,36 +10,35 @@ repositories {
 
 ext {
     inputFilenames = fileTree("${projectDir}/src").matching {
-                include "**/*.adoc"
-            }.getFiles()
-            .stream()
-            .map(File::getName)
-            .map(name -> name.tokenize('.').first() )
-            .toList()
+        include "**/*.adoc"
+    }.getFiles()
+    .stream()
+        .map(File::getName)
+        .map(name -> name.tokenize('.').first() )
+        .toList()
 }
 
 asciidoctor {
     sourceDir 'src'
-    baseDirFollowsSourceDir()
+        baseDirFollowsSourceDir()
 
-    outputOptions {
-        backends = ['docbook']
-    }
+        outputOptions {
+            backends = ['docbook']
+        }
 }
 
 
 tasks.register('buildDocx'){
     dependsOn(['downloadPandoc','asciidoctor'])
-    doLast {
-        project.inputFilenames.each{ filename ->
-            printf("NAME:${filename.toString()}")
-            exec{
-                commandLine 'pandoc','-f','docbook','-t','docx',
-                        "\"${asciidoctor.outputDir}\\${filename.toString()}.xml\"" , '-o',
-                        "\"${asciidoctor.outputDir}\\${filename.toString()}.docx\""
+        doLast {
+            project.inputFilenames.each{ filename ->
+                exec{
+                    commandLine 'pandoc','-f','docbook','-t','docx',
+                                "\"${asciidoctor.outputDir}\\${filename.toString()}.xml\"" ,
+                                '-o', "\"${asciidoctor.outputDir}\\${filename.toString()}.docx\""
+                }
             }
         }
-    }
 }
 
 tasks.register('downloadPandoc',Exec){
