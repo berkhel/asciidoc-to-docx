@@ -84,6 +84,10 @@ tasks.register('loadMacro', Exec){
 # 5. In the Trust Center, click Macro Settings.
 # 6. Check or uncheck Trust access to the VBA project object model to enable or disable access to Visual Basic Projects.
 # 7. Click OK.
+# 8. In Developer tab, click Visual Basic to open the VBA editor.
+# 9. Click Tools, and then click References.
+# 10. Select the "Microsoft Visual Basic for Applications Extensibility" check box
+# 11. Save and close the Normal.dotm file
 if (\$document.VBProject -eq \$null) { 
     Write-Host "VBProject is not available in the document."
         \$document.Close()
