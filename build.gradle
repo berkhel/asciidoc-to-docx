@@ -1,3 +1,4 @@
+import java.nio.file.Path
 
 plugins {
     id 'org.asciidoctor.jvm.convert' version '4.0.2'
@@ -8,43 +9,55 @@ repositories {
     mavenCentral()
 }
 
-ext {
-    inputFilenames = fileTree("${projectDir}/src").matching {
-        include "**/*.adoc"
-    }.getFiles()
-    .stream()
-        .map(File::getName)
-        .map(name -> name.tokenize('.').first() )
-        .toList()
-}
-
 asciidoctor {
     sourceDir 'src'
-        baseDirFollowsSourceDir()
-
-        outputOptions {
-            backends = ['docbook']
+    baseDirFollowsSourceDir()
+    outputOptions {
+        backends = ['docbook']
+    }
+    asciidoctorj {
+        modules {
+            diagram.use() 
+            diagram.version '2.3.0' 
         }
+    }
+}
+
+ext {
+  asciidoctorRelativeOutputDir = Path.of("${projectDir}").relativize(Path.of("${asciidoctor.outputDir}"))
 }
 
 
 tasks.register('buildDocx'){
     dependsOn(['downloadPandoc','asciidoctor'])
-        doLast {
-            project.inputFilenames.each{ filename ->
-                exec{
-                    commandLine 'pandoc','-f','docbook','-t','docx',
-                                "\"${asciidoctor.outputDir}\\${filename.toString()}.xml\"" ,
-                                '-o', "\"${asciidoctor.outputDir}\\${filename.toString()}.docx\""
-                }
+    finalizedBy('applyMacro')
+    doLast {
+        fileTree("${project.asciidoctorRelativeOutputDir}").matching {
+            include "**/*.xml"
+        }.getFiles()
+        .stream()
+        .map(File::getName)
+        .map(name -> name.tokenize('.').first() ) //get name without extension
+        .each{ filename ->
+            exec{
+                commandLine 'pandoc','-f','docbook','-t','docx',
+                            "\"${project.asciidoctorRelativeOutputDir}\\${filename.toString()}.xml\"" ,
+                            '-o', "\"${project.asciidoctorRelativeOutputDir}\\${filename.toString()}.docx\"",
+                            "--resource-path=\"${project.asciidoctorRelativeOutputDir}\""
             }
         }
+    }
+}
+
+tasks.register('applyMacro',Exec){
+        def macroName = 'another_summary'
+        commandLine "C:\\Program Files\\Microsoft Office\\root\\Office16\\WINWORD.EXE",
+        "/m${macroName}",
+        "\".\\${project.asciidoctorRelativeOutputDir}\\features.docx\""
 }
 
 tasks.register('downloadPandoc',Exec){
-    onlyIf {
-        !isPandocAvailable()
-    }
+    onlyIf { !isPandocAvailable() }
     commandLine 'winget', 'install', '--source', 'winget', '--exact', '--id', 'JohnMacFarlane.Pandoc'
 }
 
