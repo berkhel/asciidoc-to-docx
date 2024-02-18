@@ -30,7 +30,6 @@ ext {
 
 tasks.register('buildDocx'){
     dependsOn(['downloadPandoc','asciidoctor'])
-    finalizedBy('applyMacro')
     doLast {
         fileTree("${project.asciidoctorRelativeOutputDir}").matching {
             include "**/*.xml"
