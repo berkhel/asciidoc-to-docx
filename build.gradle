@@ -30,6 +30,7 @@ ext {
 
 tasks.register('buildDocx'){
     dependsOn(['downloadPandoc','asciidoctor'])
+    finalizedBy('applyMacro')
     doLast {
         fileTree("${project.asciidoctorRelativeOutputDir}").matching {
             include "**/*.xml"
@@ -49,10 +50,72 @@ tasks.register('buildDocx'){
 }
 
 tasks.register('applyMacro',Exec){
-        def macroName = 'another_summary'
+        dependsOn('loadMacro')
+        def macroName = 'set_tito_lo_lungo'
         commandLine "C:\\Program Files\\Microsoft Office\\root\\Office16\\WINWORD.EXE",
         "/m${macroName}",
         "\".\\${project.asciidoctorRelativeOutputDir}\\features.docx\""
+}
+
+tasks.register('loadMacro', Exec){ 
+
+    doFirst{
+            def script = """
+# Create a new Word.Application COM object
+\$wordApp = New-Object -ComObject Word.Application
+
+# Make Word visible (optional)
+\$wordApp.Visible = \$true
+
+# Open Normal.dotm template
+\$normalDotmPath = "\$env:USERPROFILE\\AppData\\Roaming\\Microsoft\\Templates\\Normal.dotm"  # Update this path accordingly
+\$document = \$wordApp.Documents.Open(\$normalDotmPath)
+
+# Specify the path to your .bas file
+# You can export this from a macro
+# Update this path accordingly
+\$basFilePath = "${projectDir}\\src\\macro\\my_macro.bas"  
+
+# Ensure that VBProject is available
+# 1. Open the Normal.dotm file in ~\\AppData\\Roaming\\Microsoft\\Templates\\Normal.dotm
+# 2. Click the File tab
+# 3. Click Options.
+# 4. Click Trust Center, and then click Trust Center Settings.
+# 5. In the Trust Center, click Macro Settings.
+# 6. Check or uncheck Trust access to the VBA project object model to enable or disable access to Visual Basic Projects.
+# 7. Click OK.
+if (\$document.VBProject -eq \$null) { 
+    Write-Host "VBProject is not available in the document."
+        \$document.Close()
+        \$wordApp.Quit()
+        [System.Runtime.Interopservices.Marshal]::ReleaseComObject(\$document) | Out-Null
+        [System.Runtime.Interopservices.Marshal]::ReleaseComObject(\$wordApp) | Out-Null
+            exit
+}
+
+# Import the .bas file to Normal.dotm
+\$vbComponent = \$document.VBProject.VBComponents.Import(\$basFilePath)
+
+# Save and close the document
+\$document.Save()
+\$document.Close()
+
+# Quit Word application
+\$wordApp.Quit()
+
+# Release COM objects
+[System.Runtime.Interopservices.Marshal]::ReleaseComObject(\$document) | Out-Null
+[System.Runtime.Interopservices.Marshal]::ReleaseComObject(\$wordApp) | Out-Null
+"""
+
+
+            def psScript = file('loadmacro.ps1')
+            psScript.text = script
+
+    }
+
+     commandLine 'cmd', '/c', 'Powershell  -File  loadmacro.ps1'
+
 }
 
 tasks.register('downloadPandoc',Exec){
